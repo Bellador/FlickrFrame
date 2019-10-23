@@ -26,7 +26,6 @@ where the users personal authenticatoin details are contained. E.g.
 111bc12472b0e18348039184df2343d7
 
 &lt;SECRET>
-
 9f3215cdr17eef7c
 
 ---
