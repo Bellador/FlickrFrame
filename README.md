@@ -17,7 +17,7 @@ The output file is saved in the created project folder and is named according to
 The workspace or project folder will be established in the same directory as this file.
 
 API AUTHENTICATION:
-During the FlickrQuerier class invokation a (txt) file has to be provided which contains &ltKEY> and &ltSECRET> sections
+During the FlickrQuerier class invokation a (txt) file has to be provided which contains &lt;KEY> and &lt;SECRET> sections
 where the users personal authenticatoin details are contained. E.g. 
 
 ---
