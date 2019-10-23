@@ -1,9 +1,5 @@
 # FlickrFrame
 
-### Overview
-framework that allows the easy execution of geospatial queries of the official FlickrAPI given GeoJson or simple boundingbox formats
-
-
 ### Overview:
 This script is used to easily and customizable query the official FlickrAPI for georeferenced posts
 by supplying the boundaries of an area of interest either through a single bounding box or a GeoJson
@@ -24,11 +20,11 @@ API AUTHENTICATION:
 During the FlickrQuerier class invokation a (txt) file has to be provided which contains <KEY> and <SECRET> sections
 where the users personal authenticatoin details are contained. E.g. 
 
-----------------------------------
-<KEY>
+---
+'''<KEY>'''
 111bc12472b0e18348039184df2343d7
 
-<SECRET>
+'''<SECRET>'''
 9f3215cdr17eef7c
-----------------------------------
+---
 (does not correspond with real credentials)
