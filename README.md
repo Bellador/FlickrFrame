@@ -21,10 +21,13 @@ During the FlickrQuerier class invokation a (txt) file has to be provided which 
 where the users personal authenticatoin details are contained. E.g. 
 
 ---
+
 &lt;KEY>
 111bc12472b0e18348039184df2343d7
 
 &lt;SECRET>
+
 9f3215cdr17eef7c
+
 ---
 (does not correspond with real credentials)
