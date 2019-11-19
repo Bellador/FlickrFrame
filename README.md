@@ -33,4 +33,4 @@ where the users personal authenticatoin details are contained. E.g.
 (does not correspond with real credentials)
 
 
-Since the FlickrAPI can only be queried with bounding boxes that might not describe the actual research area but rather the envelope of it the script **_shapefile_clip.py_** can be used to clip .csv files to corresponding shapefiles.
+Since the FlickrAPI can only be queried with bounding boxes that might not describe the actual research area but rather the envelope of it. The script **_shapefile_clip.py_** can be used to clip .csv files to corresponding shapefiles.
