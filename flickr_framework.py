@@ -221,9 +221,9 @@ class FlickrFrame:
 
 ##########################################################################################
 
-project_name = 'from_FLICKR_API'
+project_name = 'from_FLICKR_API_500mbuffer'
 path_CREDENTIALS = "C:/Users/mhartman/PycharmProjects/MotiveDetection/FLICKR_API_KEY.txt"
-geojson_file = "C:/Users/mhartman/PycharmProjects/Ross_query/sites_wgs84.geojson"
+geojson_file = "C:/Users/mhartman/PycharmProjects/Ross_query/area_shapefile/split_bboxes_by_attribute/envelope_500m_buffer_merge.json"
 bbox_test = ['9.413564,47.282421,9.415497,47.285627']
 # MAX DATE SET FOR ROSS QUERY TO MATCH DB
 
