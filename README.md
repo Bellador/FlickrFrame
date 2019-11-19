@@ -10,11 +10,11 @@ During the process it is checked if a query exceeds the maximum of roughly 4'000
 If that is the case, the same bounding box is queried iteratively with smaller timespans to capture all possible
 georeferenced flickr posts from a given region.
 
-The output is presented in a CSV file with semicolon seperation by default. All the data is UTF-8 encoded and margianlly processed to
-allow for easy further processing.
+The output is presented in a CSV file with semicolon seperation by default. All the data is UTF-8 encoded and processed if necessary to
+allow for easy further usage.
 The output file is saved in the created project folder and is named according to the current project name, the current time and in the case of a supplied GeoJson file with multiple bounding boxes with the bounding box name.
 
-The workspace or project folder will be established in the same directory as this file.
+The workspace or project folder will be established in the same directory as this script file.
 
 API AUTHENTICATION:
 During the FlickrQuerier class invokation a (txt) file has to be provided which contains &lt;KEY> and &lt;SECRET> sections
