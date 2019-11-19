@@ -4,4 +4,6 @@
 # But not these files...
 !.gitignore
 !flickr_framework.py
-!query_flickr_api_core.py
+!query_flickr_api_improved.py
+!shapefile_clip.py
+!README.md
