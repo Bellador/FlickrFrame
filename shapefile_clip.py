@@ -16,7 +16,7 @@ def load_shps():
 
     for shape in shapes:
         if shape.endswith('.shp'):
-            region_name = shape[:-4] ###CHANGE THIS TO CORRECTLY CLIP INPUT WITH CORRESPONDING SHAPEFILE
+            region_name = shape[:-14].replace('_', '-') ###CHANGE THIS TO CORRECTLY CLIP INPUT WITH CORRESPONDING SHAPEFILE
             print(f"loading shapefile for region {region_name}")
             full_path = os.path.join(shapefile_path, shape)
             shape_gdf = gpd.read_file(full_path)
@@ -94,6 +94,6 @@ if __name__ == '__main__':
                     save_path = os.path.join(workspace, flickrAPI_clipped, file_name)
                 elif re.search(r'from_YFCC100M_db', root):
                     save_path = os.path.join(workspace, yfcc100m_clipped, file_name)
-                df_clipped.to_csv(save_path)
+                df_clipped.to_csv(save_path, sep=';', encoding='utf-8', index=False)
                 print(f"Saving clipped csv for region: {region}")
             print(f'--------------------finished: {root}----------------------------------')
