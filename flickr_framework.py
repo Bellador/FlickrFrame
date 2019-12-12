@@ -45,10 +45,10 @@ class FlickrFrame:
             3. Alert if none was supplied
             4. Alert if both were supplied - which to use?
         '''
-        if self.bbox and self.geojson_file is None:
+        if self.bbox is None and self.geojson_file is None:
             print("No bbox information supplied. \nAborting...")
             sys.exit(1)
-        elif self.bbox and self.geojson_file is not None:
+        elif self.bbox is not None and self.geojson_file is not None:
             print("Single bbox and GeoJson supplied. Supply only one.\n Aborting...")
             sys.exit(1)
 
@@ -96,7 +96,7 @@ class FlickrFrame:
                 print("--" * 30)
                 print(f"{counter+1} of {(pages * tries)+1}: Processing timespan {new_lower_limit} - {new_upper_limit}")
 
-                flickr_obj = FlickrQuerier(self.project_name,
+                flickrquerier_obj = FlickrQuerier(self.project_name,
                                            self.area_name,
                                            bbox,
                                            min_upload_date=new_lower_limit,
@@ -105,8 +105,8 @@ class FlickrFrame:
                                            toget_images=self.toget_images,
                                            api_creds_file=self.api_credentials_path,
                                            subquery_status=True)
-                if not flickr_obj.toomany_pages[1] and flickr_obj.unique_ids is not None:
-                    all_unique_ids = all_unique_ids.union(flickr_obj.unique_ids)
+                if not flickrquerier_obj.toomany_pages[1] and flickrquerier_obj.unique_ids is not None:
+                    all_unique_ids = all_unique_ids.union(flickrquerier_obj.unique_ids)
                     # all_unique_ids = all_unique_ids + flickr_obj.unique_ids
                 else:
                     print("--" * 30)
@@ -123,7 +123,7 @@ class FlickrFrame:
             print("#-" * 30)
             print("Successfully acquired all unique ids of subquery")
             print(f"Querying a total of {len(all_unique_ids)} ids and writing to csv file... ")
-            flickr_obj.get_info(all_unique_ids)
+            flickrquerier_obj.get_info(all_unique_ids)
             print("#-" * 30)
             break
 
@@ -177,7 +177,7 @@ class FlickrFrame:
                     print("**" * 30)
                     print(f"Processing new area: {self.area_name}")
                     print("**" * 30)
-                    flickr_obj = FlickrQuerier(self.project_name,
+                    flickrquerier_obj = FlickrQuerier(self.project_name,
                                                self.area_name,
                                                bbox_data['bbox'],
                                                min_upload_date=self.min_upload_date,
@@ -190,8 +190,8 @@ class FlickrFrame:
                     Check if flickr_obj.toomany_pages is True 
                     which means sub-queries with smaller timespan need to be initiated
                     '''
-                    if flickr_obj.toomany_pages[1]:
-                        self.big_bbox_handler(bbox_data['bbox'], flickr_obj.toomany_pages[0])
+                    if flickrquerier_obj.toomany_pages[1]:
+                        self.big_bbox_handler(bbox_data['bbox'], flickrquerier_obj.toomany_pages[0])
 
                 else:
                     print("##" * 30)
@@ -203,7 +203,7 @@ class FlickrFrame:
             print("Parsing single bounding box...")
             self.area_name = '{}_{:%m_%d_%H_%M_%S}'.format(self.project_name, datetime.datetime.now())
 
-            flickr_obj = FlickrQuerier(self.project_name,
+            flickrquerier_obj = FlickrQuerier(self.project_name,
                                        self.area_name,
                                        self.bbox,
                                        min_upload_date=self.min_upload_date,
@@ -216,19 +216,22 @@ class FlickrFrame:
             Check if flickr_obj.toomany_pages is True 
             which means sub-queries with smaller timespan need to be initiated
             '''
-            if flickr_obj.toomany_pages[1]:
-                self.big_bbox_handler(self.bbox, flickr_obj.toomany_pages[0])
+            if flickrquerier_obj.toomany_pages[1]:
+                self.big_bbox_handler(self.bbox, flickrquerier_obj.toomany_pages[0])
 
 ##########################################################################################
+if __name__ == '__main__':
+    project_name = 'preikestolen'
+    path_CREDENTIALS = "C:/Users/mhartman/PycharmProjects/MotiveDetection/FLICKR_API_KEY.txt"
+    # geojson_file = "C:/Users/mhartman/PycharmProjects/Ross_query/area_shapefile/split_bboxes_by_attribute/envelope_500m_buffer_merge.json"
+    # bbox_test = ['9.413564,47.282421,9.415497,47.285627']
+    bbox_ashness_bridge = ['-3.130674362182617,54.56692109961103,-3.129628300666809,54.567452911333']
+    bbox_preikestolen = ['6.185399293899535,58.98511326418612,6.193242073059082,58.988921947802574']
+    bbox_wildkirchli = ['9.414210319519043,47.28324670447815,9.415208101272583,47.28424380425067']
+    # MAX DATE SET FOR ROSS QUERY TO MATCH DB
 
-project_name = 'from_FLICKR_API_500mbuffer'
-path_CREDENTIALS = "C:/Users/mhartman/PycharmProjects/MotiveDetection/FLICKR_API_KEY.txt"
-geojson_file = "C:/Users/mhartman/PycharmProjects/Ross_query/area_shapefile/split_bboxes_by_attribute/envelope_500m_buffer_merge.json"
-bbox_test = ['9.413564,47.282421,9.415497,47.285627']
-# MAX DATE SET FOR ROSS QUERY TO MATCH DB
-
-inst = FlickrFrame(project_name,
-                   path_CREDENTIALS,
-                   geojson_file=geojson_file,
-                   max_upload_date=1566259200,
-                   toget_images=False)
+    flickrframe_obj = FlickrFrame(project_name,
+                       path_CREDENTIALS,
+                       bbox=bbox_wildkirchli,
+                       max_upload_date=1576108800,
+                       toget_images=True)

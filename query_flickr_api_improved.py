@@ -44,6 +44,8 @@ class FlickrQuerier:
         self.area_name = area_name
         self.min_upload_date = min_upload_date
         self.max_upload_date = max_upload_date
+        if self.max_upload_date is None:
+            self.max_upload_date = int(time.time())
         self.accuracy = accuracy
         self.toget_images = toget_images
         self.api_creds_file = api_creds_file
@@ -81,7 +83,7 @@ class FlickrQuerier:
         print(f"Downloading images into folder {project_name} to current directory.")
         if self.toget_images:
             self.get_images(self.unique_ids, self.flickr)
-        print("--" * 30)
+        print("\n--" * 30)
         print(f"Download images - done.")
         print("--" * 30)
         print("--" * 30)
@@ -190,19 +192,30 @@ class FlickrQuerier:
             print(f"Image folder 'images_{self.project_name}' exists already in the sub-directory '/{self.project_name}/'.")
 
         for index, id in enumerate(ids):
-            results = json.loads(flickr.photos.getSizes(photo_id=id).decode('utf-8'))
             # print(json.dumps(json.loads(results.decode('utf-8')), indent=2))
-            try:
-                # Medium 640 image size url
-                url_medium = results['sizes']['size'][6]['source']
-                # urllib.request.urlretrieve(url_medium, path) # context=ssl._create_unverified_context()
-                resource = urllib.request.urlopen(url_medium, context=ssl._create_unverified_context())
-                with open(self.image_path + '/' + f"{id}.jpg", 'wb') as image:
-                    image.write(resource.read())
-                print(f"\rretrieved {index} of {len(ids)} images", end='')
+            tries = 0
+            while True:
+                try:
+                    tries += 1
+                    results = json.loads(flickr.photos.getSizes(photo_id=id).decode('utf-8'))
+                    # Medium 640 image size url
+                    url_medium = results['sizes']['size'][6]['source']
+                    # urllib.request.urlretrieve(url_medium, path) # context=ssl._create_unverified_context()
+                    resource = urllib.request.urlopen(url_medium, context=ssl._create_unverified_context())
+                    with open(self.image_path + '/' + f"{id}.jpg", 'wb') as image:
+                        image.write(resource.read())
+                    print(f"\rretrieved {index} of {len(ids)} images", end='')
+                    break
 
-            except Exception as e:
-                print(f"image not found: {e}")
+
+                except Exception as e:
+                    print(f"\nimage error: {e}")
+                    if tries <= 5:
+                        print(f"Sleeping for {self.to_sleep}s...")
+                        time.sleep(self.to_sleep)
+                        continue
+                    else:
+                        break
 
     def get_info(self, unique_ids):
         csv_separator = ';'
