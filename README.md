@@ -15,9 +15,11 @@ The output file is saved in the created project folder and is named according to
 
 The workspace or project folder will be established in the same directory as this script file.
 
+Have a look at the required and possible parameters that can be passed while initiating a FlickrFrame instance. For example, by default only Creative Commons Images are returned.
+
 API AUTHENTICATION:
 During the FlickrQuerier class invokation a (txt) file has to be provided which contains &lt;KEY> and &lt;SECRET> sections
-where the users personal authenticatoin details are contained. E.g. 
+where the users personal authenticatoin details are contained. E.g.
 
 ---
 

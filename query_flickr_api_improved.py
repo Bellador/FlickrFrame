@@ -16,8 +16,8 @@ class FlickrQuerier:
     This is a bug/feature (https://www.flickr.com/groups/51035612836@N01/discuss/72157654309722194/)
     Therefore, queries have to be constructed in a way that less than 4'000 are returned.
     '''
-    path_CREDENTIALS = "C:/Users/mhartman/PycharmProjects/MotiveDetection/FLICKR_API_KEY.txt"
-    path_LOG = "C:/Users/mhartman/PycharmProjects/MotiveDetection/LOG_FLICKR_API.txt"
+    path_CREDENTIALS = "C:/Users/mhartman/PycharmProjects/MotifDetection/FLICKR_API_KEY.txt"
+    path_LOG = "C:/Users/mhartman/PycharmProjects/MotifDetection/LOG_FLICKR_API.txt"
     # path_CSV = "C:/Users/mhartman/PycharmProjects/MotiveDetection/wildkirchli_metadata.csv"
 
     class Decorators:
@@ -34,9 +34,9 @@ class FlickrQuerier:
                 return func(*args, **kwargs)
             return wrapper_func
 
-    def __init__(self, project_name, area_name, bbox, min_upload_date=None, max_upload_date=None, accuracy=16, toget_images=True, api_creds_file=None, subquery_status=False):
-        print("--"*30)
-        print("Initialising Flickr Search with FlickrQuerier Class")
+    def __init__(self, project_name, area_name, bbox, min_upload_date=None, max_upload_date=None, accuracy=16, toget_images=True, api_creds_file=None, subquery_status=False, allowed_licenses='1,2,3,4,5,6'):
+        # print("--"*30)
+        # print("Initialising Flickr Search with FlickrQuerier Class")
         self.project_name = project_name
         self.project_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), project_name)
         self.dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -50,6 +50,7 @@ class FlickrQuerier:
         self.toget_images = toget_images
         self.api_creds_file = api_creds_file
         self.subquery_status = subquery_status
+        self.allowed_licenses = allowed_licenses
         #in case of Connection error time to pause process in seconds
         self.to_sleep = 5
         #check if other api authentication information were provided
@@ -57,10 +58,10 @@ class FlickrQuerier:
             self.api_creds_file = FlickrQuerier.path_CREDENTIALS
 
         self.api_key, self.api_secret = self.load_creds(FlickrQuerier.path_CREDENTIALS)
-        print("--" * 30)
-        print(f"Loading flickr API credentials - done.")
-        print("--" * 30)
-        print(f"Quering flickr API with given bbox: \n{self.bbox}")
+        # print("--" * 30)
+        # print(f"Loading flickr API credentials - done.")
+        # print("--" * 30)
+        # print(f"Quering flickr API with given bbox: \n{self.bbox}")
         self.unique_ids, self.flickr, self.toomany_pages = self.flickr_search()
         '''
         Check if too many pages (15 or more)
@@ -70,7 +71,7 @@ class FlickrQuerier:
         if self.toomany_pages[1]:
             return None
         if self.subquery_status:
-            print("Fetching unique ids of subquery")
+            # print("Fetching unique ids of subquery")
             return None
         print("--" * 30)
         print(f"Search - done.")
@@ -83,7 +84,8 @@ class FlickrQuerier:
         print(f"Downloading images into folder {project_name} to current directory.")
         if self.toget_images:
             self.get_images(self.unique_ids, self.flickr)
-        print("\n--" * 30)
+        print("\n")
+        print("--"* 30)
         print(f"Download images - done.")
         print("--" * 30)
         print("--" * 30)
@@ -118,9 +120,9 @@ class FlickrQuerier:
                                               min_upload_date=self.min_upload_date,
                                               max_upload_date=self.max_upload_date,
                                               accuracy=self.accuracy,
+                                              license=self.allowed_licenses,
                                               per_page=250) #is_, accuracy=12, commons=True, page=1, min_taken_date='YYYY-MM-DD HH:MM:SS'
                 break
-            # print(json.dumps(json.loads(photos.decode('utf-8')), indent=2))
             except Exception as e:
                 print("*" * 30)
                 print("*" * 30)
@@ -161,6 +163,7 @@ class FlickrQuerier:
                                                         max_upload_date=self.max_upload_date,
                                                         accuracy=self.accuracy,
                                                         page=page,
+                                                        license=self.allowed_licenses,
                                                         per_page=250)
                     result_dict[f'page_{page}'] = json.loads(result_bytes.decode('utf-8'))
                 except Exception as e:
@@ -192,7 +195,6 @@ class FlickrQuerier:
             print(f"Image folder 'images_{self.project_name}' exists already in the sub-directory '/{self.project_name}/'.")
 
         for index, id in enumerate(ids):
-            # print(json.dumps(json.loads(results.decode('utf-8')), indent=2))
             tries = 0
             while True:
                 try:
@@ -206,8 +208,6 @@ class FlickrQuerier:
                         image.write(resource.read())
                     print(f"\rretrieved {index} of {len(ids)} images", end='')
                     break
-
-
                 except Exception as e:
                     print(f"\nimage error: {e}")
                     if tries <= 5:
@@ -269,31 +269,22 @@ class FlickrQuerier:
                 tag_string = ''
                 for tag_index, tag in enumerate(results['tags']['tag']):
                     tag_string = tag_string + results['tags']['tag'][tag_index]['_content'].replace(csv_separator, '').replace(tag_connector, '') + tag_connector
-
                 try:
                     locality = results['location']['locality']['_content'].replace(csv_separator, '')
                 except Exception as e:
                     locality = ''
-                    # print(f"{e} not found. Continue")
-
                 try:
                     county = results['location']['county']['_content'].replace(csv_separator, '')
                 except Exception as e:
                     county = ''
-                    # print(f"{e} not found. Continue")
-
                 try:
                     region = results['location']['region']['_content'].replace(csv_separator, '')
                 except Exception as e:
                     region = ''
-                    # print(f"{e} not found. Continue")
-
                 try:
                     country = results['location']['country']['_content'].replace(csv_separator, '')
                 except Exception as e:
                     country = ''
-                    # print(f"\n{e} not found. Continue")
-
                 '''
                 text clean up
                 of title and description

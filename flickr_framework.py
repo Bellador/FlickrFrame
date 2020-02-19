@@ -29,7 +29,7 @@ class FlickrFrame:
     During the FlickrQuerier class invokation a (txt) file has to be provided which contains <KEY> and <SECRET> sections
     where the users personal authenticatoin details are contained.
     '''
-    def __init__(self, project_name, api_credentials_path, min_upload_date=None, max_upload_date=None, bbox=None, geojson_file=None, accuracy=16, toget_images=True):
+    def __init__(self, project_name, api_credentials_path, min_upload_date=None, max_upload_date=None, bbox=None, geojson_file=None, accuracy=16, toget_images=True, allowed_licenses='1,2,3,4,5,6'):
         self.project_name = project_name
         self.api_credentials_path = api_credentials_path
         self.min_upload_date = min_upload_date
@@ -38,6 +38,7 @@ class FlickrFrame:
         self.geojson_file = geojson_file
         self.accuracy = accuracy
         self.toget_images = toget_images
+        self.allowed_licenses = allowed_licenses
         '''
         Check if the user supplied:
             1. single bbox or 
@@ -96,24 +97,23 @@ class FlickrFrame:
                 print("--" * 30)
                 print(f"{counter+1} of {(pages * tries)+1}: Processing timespan {new_lower_limit} - {new_upper_limit}")
 
-                flickrquerier_obj = FlickrQuerier(self.project_name,
+                self.flickrquerier_obj = FlickrQuerier(self.project_name,
                                            self.area_name,
-                                           bbox,
+                                           self.bbox,
                                            min_upload_date=new_lower_limit,
                                            max_upload_date=new_upper_limit,
                                            accuracy=self.accuracy,
                                            toget_images=self.toget_images,
                                            api_creds_file=self.api_credentials_path,
                                            subquery_status=True)
-                if not flickrquerier_obj.toomany_pages[1] and flickrquerier_obj.unique_ids is not None:
-                    all_unique_ids = all_unique_ids.union(flickrquerier_obj.unique_ids)
+                if not self.flickrquerier_obj.toomany_pages[1] and self.flickrquerier_obj.unique_ids is not None:
+                    all_unique_ids = all_unique_ids.union(self.flickrquerier_obj.unique_ids)
                     # all_unique_ids = all_unique_ids + flickr_obj.unique_ids
                 else:
                     print("--" * 30)
                     print('CAUTION: At least one subquery still returned too many results.')
                     print('Further adjusting timespan...')
                     break
-
                 #assign new timespan boundaries for the next iteration
                 lower_limit_timespan = upper_limit_timespan = new_upper_limit
             '''
@@ -122,9 +122,19 @@ class FlickrFrame:
             '''
             print("#-" * 30)
             print("Successfully acquired all unique ids of subquery")
-            print(f"Querying a total of {len(all_unique_ids)} ids and writing to csv file... ")
-            flickrquerier_obj.get_info(all_unique_ids)
-            print("#-" * 30)
+            print(f"Querying a total of {len(all_unique_ids)} ids and writing to csv file..")
+            self.flickrquerier_obj.get_info(all_unique_ids)
+            print("--" * 30)
+            print(f"Acquiring metadata - done.")
+            print("--" * 30)
+            print(f"Downloading images..")
+            if self.toget_images:
+                self.flickrquerier_obj.get_images(all_unique_ids, self.flickrquerier_obj.flickr)
+            print("\n--" * 30)
+            print(f"Download images - done.")
+            print("--" * 30)
+            print("--" * 30)
+            print("FlickrQuerier Class - done")
             break
 
     def geojson_to_bbox(self, file_):
@@ -161,9 +171,9 @@ class FlickrFrame:
 
     def body(self):
         #check if project directory exists
-        if not os.path.isdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), project_name)):
+        if not os.path.isdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), self.project_name)):
             print('Creating project folder...')
-            os.mkdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), project_name))
+            os.mkdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), self.project_name))
         #check of geojson has to be parsed
         if self.geojson_file is not None:
             print("Parsing GeoJson file. Extracting contained bounding boxes...")
@@ -177,7 +187,7 @@ class FlickrFrame:
                     print("**" * 30)
                     print(f"Processing new area: {self.area_name}")
                     print("**" * 30)
-                    flickrquerier_obj = FlickrQuerier(self.project_name,
+                    self.flickrquerier_obj = FlickrQuerier(self.project_name,
                                                self.area_name,
                                                bbox_data['bbox'],
                                                min_upload_date=self.min_upload_date,
@@ -185,13 +195,14 @@ class FlickrFrame:
                                                accuracy=self.accuracy,
                                                toget_images=self.toget_images,
                                                api_creds_file=self.api_credentials_path,
+                                               allowed_licenses=self.allowed_licenses,
                                                subquery_status=False)
                     '''
                     Check if flickr_obj.toomany_pages is True 
                     which means sub-queries with smaller timespan need to be initiated
                     '''
-                    if flickrquerier_obj.toomany_pages[1]:
-                        self.big_bbox_handler(bbox_data['bbox'], flickrquerier_obj.toomany_pages[0])
+                    if self.flickrquerier_obj.toomany_pages[1]:
+                        self.big_bbox_handler(bbox_data['bbox'], self.flickrquerier_obj.toomany_pages[0])
 
                 else:
                     print("##" * 30)
@@ -203,7 +214,7 @@ class FlickrFrame:
             print("Parsing single bounding box...")
             self.area_name = '{}_{:%m_%d_%H_%M_%S}'.format(self.project_name, datetime.datetime.now())
 
-            flickrquerier_obj = FlickrQuerier(self.project_name,
+            self.flickrquerier_obj = FlickrQuerier(self.project_name,
                                        self.area_name,
                                        self.bbox,
                                        min_upload_date=self.min_upload_date,
@@ -211,27 +222,31 @@ class FlickrFrame:
                                        accuracy=self.accuracy,
                                        toget_images=self.toget_images,
                                        api_creds_file=self.api_credentials_path,
+                                       allowed_licenses=self.allowed_licenses,
                                        subquery_status=False)
             '''
             Check if flickr_obj.toomany_pages is True 
             which means sub-queries with smaller timespan need to be initiated
             '''
-            if flickrquerier_obj.toomany_pages[1]:
-                self.big_bbox_handler(self.bbox, flickrquerier_obj.toomany_pages[0])
+            if self.flickrquerier_obj.toomany_pages[1]:
+                self.big_bbox_handler(self.bbox, self.flickrquerier_obj.toomany_pages[0])
 
 ##########################################################################################
 if __name__ == '__main__':
-    project_name = 'preikestolen'
+
+    project_name = 'the_shard'
     path_CREDENTIALS = "C:/Users/mhartman/PycharmProjects/MotiveDetection/FLICKR_API_KEY.txt"
     # geojson_file = "C:/Users/mhartman/PycharmProjects/Ross_query/area_shapefile/split_bboxes_by_attribute/envelope_500m_buffer_merge.json"
-    # bbox_test = ['9.413564,47.282421,9.415497,47.285627']
     bbox_ashness_bridge = ['-3.130674362182617,54.56692109961103,-3.129628300666809,54.567452911333']
     bbox_preikestolen = ['6.185399293899535,58.98511326418612,6.193242073059082,58.988921947802574']
     bbox_wildkirchli = ['9.414210319519043,47.28324670447815,9.415208101272583,47.28424380425067']
-    # MAX DATE SET FOR ROSS QUERY TO MATCH DB
+    bbox_towerbridge = [' -0.079782,51.504008,-0.071165,51.506647']
+    bbox_theshard = ['-0.087154,51.504199,-0.085700,51.504666']
 
     flickrframe_obj = FlickrFrame(project_name,
-                       path_CREDENTIALS,
-                       bbox=bbox_wildkirchli,
-                       max_upload_date=1576108800,
-                       toget_images=True)
+                            path_CREDENTIALS,
+                            bbox=bbox_theshard,
+                            min_upload_date=1575158400,
+                            max_upload_date=1582070400,
+                            allowed_licenses='1,2,3,4,5,6',
+                            toget_images=True)
