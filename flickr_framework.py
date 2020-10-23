@@ -29,7 +29,7 @@ class FlickrFrame:
     During the FlickrQuerier class invokation a (txt) file has to be provided which contains <KEY> and <SECRET> sections
     where the users personal authenticatoin details are contained.
     '''
-    def __init__(self, project_name, api_credentials_path, min_upload_date=None, max_upload_date=None, bbox=None, geojson_file=None, accuracy=16, toget_images=True, allowed_licenses='1,2,3,4,5,6'):
+    def __init__(self, project_name, api_credentials_path, min_upload_date=None, max_upload_date=None, bbox=None, geojson_file=None, accuracy=16, toget_images=True, allowed_licenses=None):
         self.project_name = project_name
         self.api_credentials_path = api_credentials_path
         self.min_upload_date = min_upload_date
@@ -130,7 +130,8 @@ class FlickrFrame:
             print(f"Downloading images..")
             if self.toget_images:
                 self.flickrquerier_obj.get_images(all_unique_ids, self.flickrquerier_obj.flickr)
-            print("\n--" * 30)
+            print("\n")
+            print("--" * 30)
             print(f"Download images - done.")
             print("--" * 30)
             print("--" * 30)
@@ -233,8 +234,9 @@ class FlickrFrame:
 
 ##########################################################################################
 if __name__ == '__main__':
+    '''change project name!!!'''
+    project_name = 'bafu_wamos3_flickrdata'
 
-    project_name = 'the_shard'
     path_CREDENTIALS = "C:/Users/mhartman/PycharmProjects/MotiveDetection/FLICKR_API_KEY.txt"
     # geojson_file = "C:/Users/mhartman/PycharmProjects/Ross_query/area_shapefile/split_bboxes_by_attribute/envelope_500m_buffer_merge.json"
     bbox_ashness_bridge = ['-3.130674362182617,54.56692109961103,-3.129628300666809,54.567452911333']
@@ -242,11 +244,16 @@ if __name__ == '__main__':
     bbox_wildkirchli = ['9.414210319519043,47.28324670447815,9.415208101272583,47.28424380425067']
     bbox_towerbridge = [' -0.079782,51.504008,-0.071165,51.506647']
     bbox_theshard = ['-0.087154,51.504199,-0.085700,51.504666']
+    bbox_dataintegration_smallextend = ['6.460675,46.478315,7.026471,46.770689']
+    bbox_dataintegration_bigextend = ['6.1602,46.2024,8.1817,47.3793']
+    bbox_dataintegration_finalextend = ['7.5148,46.7033,8.2701,47.5137']
+
+    bbox_switzerland = ['5.85575,45.759859,10.590812,47.835283']
 
     flickrframe_obj = FlickrFrame(project_name,
                             path_CREDENTIALS,
-                            bbox=bbox_theshard,
-                            min_upload_date=1575158400,
-                            max_upload_date=1582070400,
-                            allowed_licenses='1,2,3,4,5,6',
-                            toget_images=True)
+                            bbox=bbox_switzerland,
+                            allowed_licenses='all', #'3,4,5'
+                            min_upload_date=None,
+                            max_upload_date=None,
+                            toget_images=False)
