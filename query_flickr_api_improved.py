@@ -16,8 +16,7 @@ class FlickrQuerier:
     This is a bug/feature (https://www.flickr.com/groups/51035612836@N01/discuss/72157654309722194/)
     Therefore, queries have to be constructed in a way that less than 4'000 are returned.
     '''
-    path_CREDENTIALS = "C:/Users/mhartman/PycharmProjects/MotifDetection/FLICKR_API_KEY.txt"
-    path_LOG = "C:/Users/mhartman/PycharmProjects/MotifDetection/LOG_FLICKR_API.txt"
+    path_LOG = "C:/Users/mhartman/PycharmProjects/FlickrFrame/LOG_FLICKR_API.txt"
     # path_CSV = "C:/Users/mhartman/PycharmProjects/MotiveDetection/wildkirchli_metadata.csv"
 
     class Decorators:
@@ -34,7 +33,9 @@ class FlickrQuerier:
                 return func(*args, **kwargs)
             return wrapper_func
 
-    def __init__(self, project_name, area_name, bbox, min_upload_date=None, max_upload_date=None, accuracy=16, toget_images=True, api_creds_file=None, subquery_status=False, allowed_licenses='all'):
+    def __init__(self, project_name, area_name, bbox, min_upload_date=None, max_upload_date=None, accuracy=16,
+                 toget_images=True, image_size='medium', api_creds_file="C:/Users/mhartman/PycharmProjects/FlickrFrame/FLICKR_API_KEY.txt",
+                 subquery_status=False, allowed_licenses='all', rate_limit_sleep=2):
         # print("--"*30)
         # print("Initialising Flickr Search with FlickrQuerier Class")
         self.project_name = project_name
@@ -48,23 +49,25 @@ class FlickrQuerier:
             self.max_upload_date = int(time.time())
         self.accuracy = accuracy
         self.toget_images = toget_images
+        self.image_size = image_size
         self.api_creds_file = api_creds_file
         self.subquery_status = subquery_status
         # if allowed_licenses is 'all' then ALL images irrespective of the license shall be returned!
         # could most likely be changed to None to retrieve all licenses but not entirely sure
         self.allowed_licenses = allowed_licenses
+        # sleep after each api query to not hit the rate limit of 3600 queries per hour source: https://www.flickr.com/services/developer/api/
+        self.rate_limit_sleep = rate_limit_sleep
         #in case of Connection error time to pause process in seconds
-        self.to_sleep = 5
-        #check if other api authentication information were provided
-        if self.api_creds_file is None:
-            self.api_creds_file = FlickrQuerier.path_CREDENTIALS
-
-        self.api_key, self.api_secret = self.load_creds(FlickrQuerier.path_CREDENTIALS)
+        self.to_sleep = 60
+        # #check if other api authentication information were provided
+        # if self.api_creds_file is None:
+        #     self.api_creds_file = self.path_CREDENTIALS
+        self.api_key, self.api_secret = self.load_creds(self.api_creds_file)
         # print("--" * 30)
         # print(f"Loading flickr API credentials - done.")
         # print("--" * 30)
         # print(f"Quering flickr API with given bbox: \n{self.bbox}")
-        self.unique_ids, self.flickr, self.toomany_pages = self.flickr_search()
+        self.result_dict, self.unique_ids, self.flickr, self.toomany_pages = self.flickr_search()
         '''
         Check if too many pages (15 or more)
         were returned by the flickr search for the given bounding box
@@ -76,28 +79,28 @@ class FlickrQuerier:
             # print("Fetching unique ids of subquery")
             return None
         print("--" * 30)
-        print(f"Search - done.")
+        print(f"[*] Search - done.")
         print("--" * 30)
-        print(f"Fetching metadata for search results and writing to file...")
-        self.get_info(self.unique_ids)
+        print(f"[*] Fetching metadata for search results and writing to file...")
+        self.write_info(self.result_dict)
         print("--" * 30)
-        print(f"Acquiring metadata - done.")
+        print(f"[*] Acquiring metadata - done.")
         if self.toget_images:
             print("--" * 30)
-            print(f"Downloading images into folder {project_name} to current directory.")
-            self.get_images(self.unique_ids, self.flickr)
+            print(f"[*] Downloading images into folder {project_name} to current directory.")
+            self.get_images(self.result_dict, self.unique_ids, image_size=self.image_size)
             print("\n")
             print("--" * 30)
-            print(f"Download images - done.")
+            print(f"[*] Download images - done.")
         print("--" * 30)
         print("--" * 30)
-        print("FlickrQuerier Class - done")
+        print("[*] FlickrQuerier Class - done")
 
     @Decorators.logit
     def load_creds(self, path):
         key_found = False
         secret_found = False
-        with open(FlickrQuerier.path_CREDENTIALS, 'r') as f:
+        with open(self.api_creds_file, 'r') as f: #FlickrQuerier.path_CREDENTIALS
             for line in f:
                 if key_found:
                     api_key = line.strip().encode('utf-8')
@@ -115,6 +118,11 @@ class FlickrQuerier:
         return api_key, api_secret
 
     def flickr_search(self):
+        # extra fields to retrieve with photos.search endpoint. Can replace the much more request intensive photos.getInfo!
+        # must be a comma seperated list - but still a string; not a python list!
+        extras = "description, license, date_upload, date_taken, owner_name, icon_server, original_format, last_update, " \
+                 "geo, tags, machine_tags, o_dims, views, media, path_alias, url_sq, url_t, url_s, url_q, url_m, url_n, " \
+                 "url_z, url_c, url_l, url_o"
         flickr = flickrapi.FlickrAPI(self.api_key, self.api_secret, format='json')
         while True:
             try:
@@ -124,23 +132,28 @@ class FlickrQuerier:
                                                   max_upload_date=self.max_upload_date,
                                                   accuracy=self.accuracy,
                                                   license=self.allowed_licenses,
-                                                  per_page=250) #is_, accuracy=12, commons=True, page=1, min_taken_date='YYYY-MM-DD HH:MM:SS'
+                                                  per_page=250,
+                                                  extras=extras) #is_, accuracy=12, commons=True, page=1, min_taken_date='YYYY-MM-DD HH:MM:SS'
                     break
                 else:
                     photos = flickr.photos.search(bbox=self.bbox,
                                                   min_upload_date=self.min_upload_date,
                                                   max_upload_date=self.max_upload_date,
                                                   accuracy=self.accuracy,
-                                                  per_page=250)  # is_, accuracy=12, commons=True, page=1, min_taken_date='YYYY-MM-DD HH:MM:SS'
+                                                  per_page=250,
+                                                  extras=extras)# is_, accuracy=12, commons=True, page=1, min_taken_date='YYYY-MM-DD HH:MM:SS'
                     break
+
             except Exception as e:
                 print("*" * 30)
                 print("*" * 30)
-                print("Error occurred: {}".format(e))
-                print(f"sleeping {self.to_sleep}s...")
+                print(f"[-] Search error: {e}")
+                print(f"[*] Sleeping {self.to_sleep}s...")
                 print("*" * 30)
                 print("*" * 30)
                 time.sleep(self.to_sleep)
+
+        time.sleep(self.rate_limit_sleep)  # according to the rate limit of 3600 queries per hour source: https://www.flickr.com/services/developer/api/
 
         result = json.loads(photos.decode('utf-8'))
         '''
@@ -150,7 +163,7 @@ class FlickrQuerier:
         result_dict = {}
         result_dict['page_1'] = result
         if pages < 15:
-            print("Less than 4'000 results for this bounding box. Continuing normally...")
+            print("[*] Less than 4'000 results for this bounding box. Continuing normally...")
             toomany_pages = (pages, False)
         if pages != 1 and pages != 0:
             '''
@@ -162,7 +175,7 @@ class FlickrQuerier:
                 print(f"CAUTION: {pages} pages returned. \nAutomatically adapting query to retrieve all posts...")
                 unique_ids = None
                 toomany_pages = (pages, True)
-                return unique_ids, flickr, toomany_pages
+                return result_dict, unique_ids, flickr, toomany_pages
 
             print(f"Search returned {pages} result pages")
             for page in range(2, pages+1):
@@ -175,7 +188,8 @@ class FlickrQuerier:
                                                             accuracy=self.accuracy,
                                                             page=page,
                                                             license=self.allowed_licenses,
-                                                            per_page=250)
+                                                            per_page=250,
+                                                            extras=extras)
                         result_dict[f'page_{page}'] = json.loads(result_bytes.decode('utf-8'))
                     else:
                         result_bytes = flickr.photos.search(bbox=self.bbox,
@@ -183,62 +197,73 @@ class FlickrQuerier:
                                                             max_upload_date=self.max_upload_date,
                                                             accuracy=self.accuracy,
                                                             page=page,
-                                                            per_page=250)
+                                                            per_page=250,
+                                                            extras=extras)
                         result_dict[f'page_{page}'] = json.loads(result_bytes.decode('utf-8'))
+                    time.sleep(self.rate_limit_sleep)  # according to the rate limit of 3600 queries per hour source: https://www.flickr.com/services/developer/api/
 
                 except Exception as e:
                     print("*" * 30)
                     print("*" * 30)
-                    print("Error occurred: {}".format(e))
-                    print(f"sleeping {self.to_sleep}s...")
+                    print(f"[-] Search error: {e}")
+                    print(f"[*] Sleeping {self.to_sleep}s...")
                     print("*" * 30)
                     print("*" * 30)
                     time.sleep(self.to_sleep)
-        print("All pages handled.")
-        #get ids of returned flickr images
+        print("[*] All pages handled.")
+        # #get ids of returned flickr images
         ids = []
         for dict_ in result_dict:
-            for element in result_dict[dict_]['photos']['photo']:
-                ids.append(element['id'])
+            try:
+                for element in result_dict[dict_]['photos']['photo']:
+                    ids.append(element['id'])
+            except Exception as e:
+                print(f'[-] Error in result_dict: {e}')
         unique_ids = set(ids)
 
-        print(f"Results found: {len(unique_ids)}")
+        print(f"[*] Results found: {len(unique_ids)}")
 
-        return unique_ids, flickr, toomany_pages
+        return result_dict, unique_ids, flickr, toomany_pages
 
-    def get_images(self, ids, flickr):
+    def get_images(self, results, ids, image_size='medium'):
         self.image_path = os.path.join(self.project_path, f'images_{self.project_name}')
         if not os.path.exists(self.image_path):
             os.makedirs(self.image_path)
-            print(f"Creating image folder 'images_{self.project_name}' in sub-directory '/{self.project_name}/' - done.")
+            print(f"[*] Creating image folder 'images_{self.project_name}' in sub-directory '/{self.project_name}/' - done.")
         else:
-            print(f"Image folder 'images_{self.project_name}' exists already in the sub-directory '/{self.project_name}/'.")
+            print(f"[*] Image folder 'images_{self.project_name}' exists already in the sub-directory '/{self.project_name}/'.")
 
-        for index, id in enumerate(ids):
-            tries = 0
-            while True:
-                try:
-                    tries += 1
-                    results = json.loads(flickr.photos.getSizes(photo_id=id).decode('utf-8'))
-                    # Medium 640 image size url
-                    url_medium = results['sizes']['size'][6]['source']
-                    # urllib.request.urlretrieve(url_medium, path) # context=ssl._create_unverified_context()
-                    resource = urllib.request.urlopen(url_medium, context=ssl._create_unverified_context())
-                    with open(self.image_path + '/' + f"{id}.jpg", 'wb') as image:
-                        image.write(resource.read())
-                    print(f"\rretrieved {index} of {len(ids)} images", end='')
-                    break
-                except Exception as e:
-                    print(f"\nimage error: {e}")
-                    if tries <= 5:
-                        print(f"Sleeping for {self.to_sleep}s...")
-                        time.sleep(self.to_sleep)
-                        continue
-                    else:
+        # dict that matches image_size to dictionary key as it is in the Flickr API response
+        image_size_dict = {'small': 'url_s',
+                           'medium': 'url_m',
+                           'large': 'url_l',
+                           'original': 'url_o'}
+        image_size_key = image_size_dict[image_size]
+        for index_1, page in enumerate(results):
+            for index_2, post in enumerate(results[page]['photos']['photo']):
+                tries = 0
+                img_url = post[image_size_key]
+                img_id = post['id']
+                while True:
+                    try:
+                        tries += 1
+                        resource = urllib.request.urlopen(img_url, context=ssl._create_unverified_context())
+                        with open(self.image_path + '/' + f"{img_id}.jpg", 'wb') as image:
+                            image.write(resource.read())
+                        print(f"\r[+] page {index_1}: retrieved {index_2} of {len(ids)} images", end='')
                         break
+                    except Exception as e:
+                        print(f"\n[-] Image error: {e}")
+                        if tries <= 5:
+                            print(f"[*] Sleeping {self.to_sleep}s...")
+                            time.sleep(self.to_sleep)
+                            continue
+                        else:
+                            break
+                time.sleep(self.rate_limit_sleep)  # according to the rate limit of 3600 queries per hour source: https://www.flickr.com/services/developer/api/
 
-    def get_info(self, unique_ids):
-        csv_separator = ';'
+    def write_info(self, results):
+        csv_separator = ';'  #';' #~&~#
         tag_connector = '+'
 
         def remove_non_ascii(s):
@@ -267,138 +292,141 @@ class FlickrQuerier:
         self.csv_output_path = self.dir_path + '/{}/metadata_{}_{:%Y_%m_%d}.csv'.format(self.project_name, self.area_name, datetime.datetime.now())
 
         with open(self.csv_output_path, 'w', encoding='utf-8') as f:
-            for index, id in enumerate(unique_ids):
-                while True:
-                    try:
-                        results = json.loads(self.flickr.photos.getInfo(photo_id=id).decode('utf-8'))
-                        break
-                    except:
-                        print(f"Error. Sleeping {self.to_sleep}s")
-                        time.sleep(self.to_sleep)
-                        #get the top level
-                try:
-                    results = results['photo']
-                except Exception as e:
-                    print(f"{e} - No metadata found")
-                    continue
-                '''
-                define which info fields should be fetched.
-                ERASE ALL STRINGS OF CSV SEPERATOR! 
-                '''
-                # extract tags into an string separated by '+'!
-                try:
-                    tag_string = ''
-                    for tag_index, tag in enumerate(results['tags']['tag']):
-                        tag_string = tag_string + results['tags']['tag'][tag_index]['_content'].replace(csv_separator, '').replace(tag_connector, '') + tag_connector
-                except Exception as e:
-                    print(f'\r[-] Tag parsing error: {e} ', end='')
-                try:
-                    locality = results['location']['locality']['_content'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Locality parsing error: {e} ', end='')
-                    locality = ''
-                try:
-                    county = results['location']['county']['_content'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] County parsing error: {e} ', end='')
-                    county = ''
-                try:
-                    region = results['location']['region']['_content'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Region parsing error: {e} ', end='')
-                    region = ''
-                try:
-                    country = results['location']['country']['_content'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Country parsing error: {e} ', end='')
-                    country = ''
-                '''
-                text clean up
-                of title and description
-                - remove linebreaks etc.
-                '''
-                try:
-                    description = remove_non_ascii(results['description']['_content'].replace(csv_separator, ''))
-                except Exception as e:
-                    print(f'\r[-] Description parsing error: {e} ', end='')
-                    description = ''
-                try:
-                    title = remove_non_ascii(results['title']['_content'].replace(csv_separator, ''))
-                except Exception as e:
-                    print(f'\r[-] Title parsing error: {e} ', end='')
-                    title = ''
-                try:
-                    user_nsid = results['owner']['nsid'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] User_nsid parsing error: {e} ', end='')
-                    user_nsid = ''
-                try:
-                    author_origin = results['owner']['location'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Author_origin parsing error: {e} ', end='')
-                    author_origin = ''
-                try:
-                    date_uploaded = results['dates']['posted'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Date_uploaded parsing error: {e} ', end='')
-                    date_uploaded = ''
-                try:
-                    date_taken = results['dates']['taken'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Date_taken parsing error: {e} ', end='')
-                    date_taken = ''
-                try:
-                    views = results['views'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Views parsing error: {e} ', end='')
-                    views = ''
-                try:
-                    page_url = results['urls']['url'][0]['_content'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Page_URL parsing error: {e} ', end='')
-                    page_url = ''
-                try:
-                    lat = results['location']['latitude'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Latitude parsing error: {e} ', end='')
-                    lat = 99999
-                try:
-                    lng = results['location']['longitude'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Longitude parsing error: {e} ', end='')
-                    lng = 99999
-                try:
-                    accuracy = results['location']['accuracy'].replace(csv_separator, '')
-                except Exception as e:
-                    print(f'\r[-] Accuracy parsing error: {e} ', end='')
-                    accuracy = ''
-                data = {
-                    'user_nsid': user_nsid,
-                    'author_origin': author_origin,
-                    'title': title,
-                    'description': description,
-                    'date_uploaded': date_uploaded,
-                    'date_taken': date_taken,
-                    'views': views,
-                    'page_url': page_url,
-                    'user_tags':  tag_string,
-                    #location information
-                    'lat': lat,
-                    'lng': lng,
-                    'accuracy': accuracy,
-                    'locality': locality,
-                    'county': county,
-                    'region': region,
-                    'country': country
-                    }
+                index = 0
+                for page in results:
+                    for post in results[page]['photos']['photo']:
+                        index += 1
+                        post_id = post['id']
+                        '''
+                        define which info fields should be fetched.
+                        ERASE ALL STRINGS OF CSV SEPERATOR! 
+                        '''
+                        # extract tags into an string separated by '+'!
+                        try:
+                            tag_string = tag_connector.join(post['tags'].replace(csv_separator, '').replace(tag_connector, '').split(' '))
+                        except Exception as e:
+                            # print(f'\r[-] Tag parsing error: {e} ', end='')
+                            tag_string = ''
+                        try:
+                            machine_tag_string = tag_connector.join(post['machine_tags'].replace(csv_separator, '').replace(tag_connector, '').split(' '))
+                        except Exception as e:
+                            # print(f'\r[-] Tag parsing error: {e} ', end='')
+                            machine_tag_string = ''
+                        '''
+                        text clean up
+                        of title and description
+                        - remove linebreaks etc.
+                        '''
+                        try:
+                            description = remove_non_ascii(post['description']['_content'].replace(csv_separator, ''))
+                        except Exception as e:
+                            # print(f'\r[-] Description parsing error: {e} ', end='')
+                            description = ''
+                        try:
+                            title = remove_non_ascii(post['title'].replace(csv_separator, ''))
+                        except Exception as e:
+                            # print(f'\r[-] Title parsing error: {e} ', end='')
+                            title = ''
+                        try:
+                            user_nsid = post['owner']
+                        except Exception as e:
+                            # print(f'\r[-] User_nsid parsing error: {e} ', end='')
+                            user_nsid = ''
+                        try:
+                            date_uploaded = post['dateupload'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Date_uploaded parsing error: {e} ', end='')
+                            date_uploaded = ''
+                        try:
+                            date_taken = post['datetaken'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Date_taken parsing error: {e} ', end='')
+                            date_taken = ''
+                        try:
+                            views = post['views'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Views parsing error: {e} ', end='')
+                            views = ''
+                        try:
+                            license = post['license'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Views parsing error: {e} ', end='')
+                            license = ''
+                        try:
+                            img_url_s = post['url_s'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Page_URL parsing error: {e} ', end='')
+                            img_url_s = ''
+                        try:
+                            img_url_m = post['url_m'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Page_URL parsing error: {e} ', end='')
+                            img_url_m = ''
+                        try:
+                            img_url_l = post['url_l'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Page_URL parsing error: {e} ', end='')
+                            img_url_l = ''
+                        try:
+                            img_url_o = post['url_o'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Page_URL parsing error: {e} ', end='')
+                            img_url_o = ''
+                        try:
+                            lat = post['latitude'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Latitude parsing error: {e} ', end='')
+                            lat = 99999
+                        try:
+                            lng = post['longitude'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Longitude parsing error: {e} ', end='')
+                            lng = 99999
+                        try:
+                            woeid = post['woeid'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Longitude parsing error: {e} ', end='')
+                            woeid = 99999
+                        try:
+                            place_id = post['place_id'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Longitude parsing error: {e} ', end='')
+                            place_id = 99999
+                        try:
+                            accuracy = post['accuracy'].replace(csv_separator, '')
+                        except Exception as e:
+                            # print(f'\r[-] Accuracy parsing error: {e} ', end='')
+                            accuracy = ''
+                        data = {
+                            'user_nsid': user_nsid,
+                            'title': title,
+                            'description': description,
+                            'date_uploaded': date_uploaded,
+                            'date_taken': date_taken,
+                            'views': views,
+                            'user_tags':  tag_string,
+                            'machine_tags': machine_tag_string,
+                            'license': license,
+                            #location information
+                            'lat': lat,
+                            'lng': lng,
+                            'woeid': woeid,
+                            'place_id': place_id,
+                            'accuracy': accuracy,
+                            # image urls in different sizes
+                            'image_url_small': img_url_s,
+                            'image_url_medium': img_url_m,
+                            'image_url_large': img_url_l,
+                            'image_url_original': img_url_o
+                            }
 
-                if index == 0:
-                    header = create_header(data)
-                    f.write(f"{header}\n")
-                if index % 50 == 0 and index != 0:
-                    print(f"\rLine {index} processed", end='')
+                        if index == 0:
+                            header = create_header(data)
+                            f.write(f"{header}\n")
+                        if index % 50 == 0 and index != 0:
+                            print(f"\rLine {index} processed", end='')
 
-                line = create_line(id, data)
-                f.write(f"{line}\n")
+                        line = create_line(post_id, data)
+                        f.write(f"{line}\n")
 
         print(f"\nCreated output file: {self.csv_output_path}")
