@@ -1,7 +1,0 @@
-Place Emergence
-
-<KEY>
-1115c13442b0e13248039184cc2343d7
-
-<SECRET>
-8f645cbb14fef77b
