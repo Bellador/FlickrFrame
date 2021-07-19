@@ -16,7 +16,7 @@ class FlickrQuerier:
     This is a bug/feature (https://www.flickr.com/groups/51035612836@N01/discuss/72157654309722194/)
     Therefore, queries have to be constructed in a way that less than 4'000 are returned.
     '''
-    path_LOG = "C:/Users/mhartman/PycharmProjects/FlickrFrame/LOG_FLICKR_API.txt"
+    path_LOG = "LOG_FLICKR_API.txt"
     # path_CSV = "C:/Users/mhartman/PycharmProjects/MotiveDetection/wildkirchli_metadata.csv"
 
     class Decorators:
@@ -239,6 +239,7 @@ class FlickrQuerier:
                            'large': 'url_l',
                            'original': 'url_o'}
         image_size_key = image_size_dict[image_size]
+        images_dowloaded = 0
         for index_1, page in enumerate(results):
             for index_2, post in enumerate(results[page]['photos']['photo']):
                 tries = 0
@@ -250,7 +251,8 @@ class FlickrQuerier:
                         resource = urllib.request.urlopen(img_url, context=ssl._create_unverified_context())
                         with open(self.image_path + '/' + f"{img_id}.jpg", 'wb') as image:
                             image.write(resource.read())
-                        print(f"\r[+] page {index_1}: retrieved {index_2} of {len(ids)} images", end='')
+                        images_dowloaded += 1
+                        print(f"\r[+] page {index_1}: retrieved {images_dowloaded} of {len(ids)} images", end='')
                         break
                     except Exception as e:
                         print(f"\n[-] Image error: {e}")

@@ -241,38 +241,16 @@ class FlickrFrame:
 ##########################################################################################
 if __name__ == '__main__':
     '''change project name!!!'''
-    project_name = 'test'
+    project_name = 'birds_around_lochwinnoch'
 
-    path_CREDENTIALS = "C:/Users/mhartman/PycharmProjects/FlickrFrame/FLICKR_API_KEY.txt"
-    # geojson_file = "C:/Users/mhartman/PycharmProjects/Ross_query/area_shapefile/split_bboxes_by_attribute/envelope_500m_buffer_merge.json"
-    bbox_ashness_bridge = ['-3.130674362182617,54.56692109961103,-3.129628300666809,54.567452911333']
-    bbox_preikestolen = ['6.185399293899535,58.98511326418612,6.193242073059082,58.988921947802574']
-    bbox_wildkirchli = ['9.414210319519043,47.28324670447815,9.415208101272583,47.28424380425067']
-    bbox_towerbridge = ['-0.079782,51.504008,-0.071165,51.506647']
-    bbox_theshard = ['-0.087154,51.504199,-0.085700,51.504666']
-    bbox_dataintegration_smallextend = ['6.460675,46.478315,7.026471,46.770689']
-    bbox_dataintegration_bigextend = ['6.1602,46.2024,8.1817,47.3793']
-    bbox_dataintegration_finalextend = ['7.5148,46.7033,8.2701,47.5137']
+    path_CREDENTIALS = "FLICKR_API_KEY.txt"
 
-    bbox_switzerland = ['5.855,45.759,10.590,47.835']
-    bbox_ireland_test = ['-11.095623,51.316881,-5.29541,55.429013']
-    # bbox_switzerland_new = ['5.8447,45.813486,10.590807,47.857403']
-    bbox_switzerland_new = ['5,45,11,48']
-
-    bbox_CH_1 = ['5.913927, 45.759859, 8.243643, 46.505954']
-    bbox_CH_2 = ['8.243643, 45.759859,10.568848, 46.505954']
-    bbox_CH_3 = ['5.913927, 46.505954, 8.243475, 47.820532']
-    bbox_CH_4 = ['8.243475, 46.505954, 9.397593, 47.820532']
-    bbox_CH_5 = ['9.397593, 46.505954, 10.568848, 47.820532']
-
-    red_kite_dummy_query = ['-4.052, 56.203, -4.031, 56.213'] # argaty, scotland
-
-    bbox_canton_zug = ['8.39424, 47.08041, 8.70186, 47.24894']
-
+    red_kite_around_argaty = ['-4.063436, 56.190326, -3.956491, 56.231234']
+    birds_around_lochwinnoch = ['-4.619658, 55.789749, -4.588323, 55.806828']
 
     flickrframe_obj = FlickrFrame(project_name,
                             path_CREDENTIALS,
-                            bbox=red_kite_dummy_query,
+                            bbox=birds_around_lochwinnoch,
                             allowed_licenses='all', #'3,4,5'
                             min_upload_date=None, #None
                             max_upload_date=None, #None,
