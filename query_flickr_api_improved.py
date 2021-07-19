@@ -1,12 +1,13 @@
-import flickrapi
+import os
 import re
+import ssl
+import time
 import json
 import urllib
-import ssl
 import datetime
-import time
-import os
 import requests
+import flickrapi
+import concurrent.futures
 from functools import wraps
 
 class FlickrQuerier:
@@ -225,7 +226,41 @@ class FlickrQuerier:
 
         return result_dict, unique_ids, flickr, toomany_pages
 
-    def get_images(self, results, ids, image_size='medium'):
+    def get_images(self, results, ids, image_size='medium', WORKERS=10):
+        def download_urls(data_chunk):
+            '''
+            download images in parallel
+            :return:
+            '''
+            print('HEEELLOOOO')
+            worker_id = data_chunk[0]
+            image_path = data_chunk[1]
+            url_chunk = data_chunk[2]
+            url_len = len(url_chunk)
+
+            images_dowloaded = 0
+            for index, img_tuple in enumerate(url_chunk, 0):
+                tries = 0
+                img_id = img_tuple[0]
+                img_url = img_tuple[1]
+                while True:
+                    try:
+                        tries += 1
+                        resource = urllib.request.urlopen(img_url, context=ssl._create_unverified_context())
+                        with open(image_path + '/' + f"{img_id}.jpg", 'wb') as image:
+                            image.write(resource.read())
+                        images_dowloaded += 1
+                        print(f"\r[+] WORKER {worker_id}: retrieved {images_dowloaded} of {url_len} images", end='')
+                        break
+                    except Exception as e:
+                        print(f"\n[-] Image error: {e}")
+                        if tries <= 5:
+                            print(f"[*] Sleeping {5}s...")
+                            time.sleep(5)
+                            continue
+                        else:
+                            break
+
         self.image_path = os.path.join(self.project_path, f'images_{self.project_name}')
         if not os.path.exists(self.image_path):
             os.makedirs(self.image_path)
@@ -240,29 +275,35 @@ class FlickrQuerier:
                            'original': 'url_o'}
         image_size_key = image_size_dict[image_size]
         images_dowloaded = 0
+        # add a empty data chunk for each worker
+        data_chunk_list = [[] for worker in list(range(WORKERS))]
+
         for index_1, page in enumerate(results):
-            for index_2, post in enumerate(results[page]['photos']['photo']):
-                tries = 0
-                img_url = post[image_size_key]
+            worker_index = 0
+            for post in results[page]['photos']['photo']:
                 img_id = post['id']
-                while True:
-                    try:
-                        tries += 1
-                        resource = urllib.request.urlopen(img_url, context=ssl._create_unverified_context())
-                        with open(self.image_path + '/' + f"{img_id}.jpg", 'wb') as image:
-                            image.write(resource.read())
-                        images_dowloaded += 1
-                        print(f"\r[+] page {index_1}: retrieved {images_dowloaded} of {len(ids)} images", end='')
-                        break
-                    except Exception as e:
-                        print(f"\n[-] Image error: {e}")
-                        if tries <= 5:
-                            print(f"[*] Sleeping {self.to_sleep}s...")
-                            time.sleep(self.to_sleep)
-                            continue
-                        else:
-                            break
-                time.sleep(self.rate_limit_sleep)  # according to the rate limit of 3600 queries per hour source: https://www.flickr.com/services/developer/api/
+                img_url = post[image_size_key]
+                data_tuple = (img_id, img_url)
+                if worker_index >= WORKERS:
+                    worker_index = 0
+                data_chunk_list[worker_index].append(data_tuple)
+                worker_index += 1
+        # add worker_id and image_path to each data chunk
+        data_packages = []
+        for worker_id, data_chunk in enumerate(data_chunk_list, 1):
+            data_package = [worker_id, self.image_path, data_chunk]
+            data_packages.append(data_package)
+        # spawn workers with data_package
+        start = time.time()
+        # download_urls(data_packages[0])
+        with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as executor:
+            # map waits in itself for all workers to finish
+            executor.map(download_urls, data_packages)
+        end = time.time()
+        print(f'[*] downloaded images in: {round((end - start) / 60, 2)} min')
+
+
+
 
     def write_info(self, results):
         csv_separator = ';'  #';' #~&~#
