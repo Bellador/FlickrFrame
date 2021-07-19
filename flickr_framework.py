@@ -116,7 +116,7 @@ class FlickrFrame:
                     '''
                     instead of id's we collect the result dict
                     '''
-                    final_result_dict_list.append(self.result_dict)
+                    final_result_dict_list.append(self.flickrquerier_obj.result_dict)
                 else:
                     print("--" * 30)
                     print('[!] CAUTION: At least one subquery still returned too many results.')
