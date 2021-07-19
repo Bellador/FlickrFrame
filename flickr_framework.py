@@ -87,10 +87,11 @@ class FlickrFrame:
             #split timespan according to pages
             timespan_subquery = int(round(timespan / (pages * tries), 0))
             '''
-            use the get_info function of the FlickrQuerier Class and provide the aggregated unique ids (which is a set)
-            of all subqueries to produce one final CSV file per area of interest.
+            aggregate the result dicts of the subquery to form one final result dict that is written to the output file
+            as a complete set of the bbox
             '''
             all_unique_ids = set()
+            final_result_dict_list = []
 
             for counter in range((pages * tries)):
                 new_lower_limit = lower_limit_timespan
@@ -112,7 +113,10 @@ class FlickrFrame:
 
                 if not self.flickrquerier_obj.toomany_pages[1] and self.flickrquerier_obj.unique_ids is not None:
                     all_unique_ids = all_unique_ids.union(self.flickrquerier_obj.unique_ids)
-                    # all_unique_ids = all_unique_ids + flickr_obj.unique_ids
+                    '''
+                    instead of id's we collect the result dict
+                    '''
+                    final_result_dict_list.append(self.result_dict)
                 else:
                     print("--" * 30)
                     print('[!] CAUTION: At least one subquery still returned too many results.')
@@ -125,15 +129,15 @@ class FlickrFrame:
             be used to produce one CSV file.
             '''
             print("#-" * 30)
-            print("[+]Successfully acquired all unique ids of subquery")
+            print("[+] Successfully acquired all unique ids of subquery")
             print(f"[*] Querying a total of {len(all_unique_ids)} ids and writing to csv file..")
-            self.flickrquerier_obj.write_info(all_unique_ids)
+            self.flickrquerier_obj.write_info(final_result_dict_list)
             print("--" * 30)
             print(f"[+] Acquiring metadata - done.")
             print("--" * 30)
             if self.toget_images:
                 print(f"[*] Downloading images..")
-                self.flickrquerier_obj.get_images(all_unique_ids, self.flickrquerier_obj.flickr)
+                self.flickrquerier_obj.get_images(final_result_dict)
                 print("\n")
                 print("--" * 30)
                 print(f"[+] Download images - done.")
@@ -241,16 +245,17 @@ class FlickrFrame:
 ##########################################################################################
 if __name__ == '__main__':
     '''change project name!!!'''
-    project_name = 'birds_around_lochwinnoch'
+    project_name = 'test' # KT_ZG_SZ
 
     path_CREDENTIALS = "FLICKR_API_KEY.txt"
 
+    KT_ZG_SZ = ['8.387433, 46.883662, 9.010485, 47.248475']
     red_kite_around_argaty = ['-4.063436, 56.190326, -3.956491, 56.231234']
-    birds_around_lochwinnoch = ['-4.619658, 55.789749, -4.588323, 55.806828']
+    # birds_around_lochwinnoch = ['-4.619658, 55.789749, -4.588323, 55.806828']
 
     flickrframe_obj = FlickrFrame(project_name,
                             path_CREDENTIALS,
-                            bbox=birds_around_lochwinnoch,
+                            bbox=red_kite_around_argaty, #KT_ZG_SZ
                             allowed_licenses='all', #'3,4,5'
                             min_upload_date=None, #None
                             max_upload_date=None, #None,

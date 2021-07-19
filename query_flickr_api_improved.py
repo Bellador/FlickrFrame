@@ -83,13 +83,14 @@ class FlickrQuerier:
         print(f"[*] Search - done.")
         print("--" * 30)
         print(f"[*] Fetching metadata for search results and writing to file...")
-        self.write_info(self.result_dict)
+        # needs to be packed into a list for compatibility with big_bbox_handler that returns a list of result_dicts
+        self.write_info([self.result_dict])
         print("--" * 30)
         print(f"[*] Acquiring metadata - done.")
         if self.toget_images:
             print("--" * 30)
             print(f"[*] Downloading images into folder {project_name} to current directory.")
-            self.get_images(self.result_dict, self.unique_ids, image_size=self.image_size)
+            self.get_images([self.result_dict], image_size=self.image_size)
             print("\n")
             print("--" * 30)
             print(f"[*] Download images - done.")
@@ -212,7 +213,7 @@ class FlickrQuerier:
                     print("*" * 30)
                     time.sleep(self.to_sleep)
         print("[*] All pages handled.")
-        # #get ids of returned flickr images
+        # get ids of returned flickr images
         ids = []
         for dict_ in result_dict:
             try:
@@ -226,13 +227,12 @@ class FlickrQuerier:
 
         return result_dict, unique_ids, flickr, toomany_pages
 
-    def get_images(self, results, ids, image_size='medium', WORKERS=10):
+    def get_images(self, results_list, image_size='medium', WORKERS=10):
         def download_urls(data_chunk):
             '''
             download images in parallel
             :return:
             '''
-            print('HEEELLOOOO')
             worker_id = data_chunk[0]
             image_path = data_chunk[1]
             url_chunk = data_chunk[2]
@@ -274,20 +274,25 @@ class FlickrQuerier:
                            'large': 'url_l',
                            'original': 'url_o'}
         image_size_key = image_size_dict[image_size]
-        images_dowloaded = 0
         # add a empty data chunk for each worker
         data_chunk_list = [[] for worker in list(range(WORKERS))]
 
-        for index_1, page in enumerate(results):
-            worker_index = 0
-            for post in results[page]['photos']['photo']:
-                img_id = post['id']
-                img_url = post[image_size_key]
-                data_tuple = (img_id, img_url)
-                if worker_index >= WORKERS:
-                    worker_index = 0
-                data_chunk_list[worker_index].append(data_tuple)
-                worker_index += 1
+        processed_ids_set = set()
+        worker_index = 0
+        for results in results_list:
+            for index_1, page in enumerate(results):
+                for post in results[page]['photos']['photo']:
+                    img_id = post['id']
+                    if img_id in processed_ids_set:
+                        continue
+                    else:
+                        processed_ids_set.add(img_id)
+                        img_url = post[image_size_key]
+                        data_tuple = (img_id, img_url)
+                        if worker_index >= WORKERS:
+                            worker_index = 0
+                        data_chunk_list[worker_index].append(data_tuple)
+                        worker_index += 1
         # add worker_id and image_path to each data chunk
         data_packages = []
         for worker_id, data_chunk in enumerate(data_chunk_list, 1):
@@ -302,10 +307,7 @@ class FlickrQuerier:
         end = time.time()
         print(f'[*] downloaded images in: {round((end - start) / 60, 2)} min')
 
-
-
-
-    def write_info(self, results):
+    def write_info(self, results_list):
         csv_separator = ';'  #';' #~&~#
         tag_connector = '+'
 
@@ -334,142 +336,149 @@ class FlickrQuerier:
 
         self.csv_output_path = self.dir_path + '/{}/metadata_{}_{:%Y_%m_%d}.csv'.format(self.project_name, self.area_name, datetime.datetime.now())
 
+        processed_ids_set = set()
         with open(self.csv_output_path, 'w', encoding='utf-8') as f:
                 index = 0
-                for page in results:
-                    for post in results[page]['photos']['photo']:
-                        index += 1
-                        post_id = post['id']
-                        '''
-                        define which info fields should be fetched.
-                        ERASE ALL STRINGS OF CSV SEPERATOR! 
-                        '''
-                        # extract tags into an string separated by '+'!
-                        try:
-                            tag_string = tag_connector.join(post['tags'].replace(csv_separator, '').replace(tag_connector, '').split(' '))
-                        except Exception as e:
-                            # print(f'\r[-] Tag parsing error: {e} ', end='')
-                            tag_string = ''
-                        try:
-                            machine_tag_string = tag_connector.join(post['machine_tags'].replace(csv_separator, '').replace(tag_connector, '').split(' '))
-                        except Exception as e:
-                            # print(f'\r[-] Tag parsing error: {e} ', end='')
-                            machine_tag_string = ''
-                        '''
-                        text clean up
-                        of title and description
-                        - remove linebreaks etc.
-                        '''
-                        try:
-                            description = remove_non_ascii(post['description']['_content'].replace(csv_separator, ''))
-                        except Exception as e:
-                            # print(f'\r[-] Description parsing error: {e} ', end='')
-                            description = ''
-                        try:
-                            title = remove_non_ascii(post['title'].replace(csv_separator, ''))
-                        except Exception as e:
-                            # print(f'\r[-] Title parsing error: {e} ', end='')
-                            title = ''
-                        try:
-                            user_nsid = post['owner']
-                        except Exception as e:
-                            # print(f'\r[-] User_nsid parsing error: {e} ', end='')
-                            user_nsid = ''
-                        try:
-                            date_uploaded = post['dateupload'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Date_uploaded parsing error: {e} ', end='')
-                            date_uploaded = ''
-                        try:
-                            date_taken = post['datetaken'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Date_taken parsing error: {e} ', end='')
-                            date_taken = ''
-                        try:
-                            views = post['views'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Views parsing error: {e} ', end='')
-                            views = ''
-                        try:
-                            license = post['license'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Views parsing error: {e} ', end='')
-                            license = ''
-                        try:
-                            img_url_s = post['url_s'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Page_URL parsing error: {e} ', end='')
-                            img_url_s = ''
-                        try:
-                            img_url_m = post['url_m'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Page_URL parsing error: {e} ', end='')
-                            img_url_m = ''
-                        try:
-                            img_url_l = post['url_l'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Page_URL parsing error: {e} ', end='')
-                            img_url_l = ''
-                        try:
-                            img_url_o = post['url_o'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Page_URL parsing error: {e} ', end='')
-                            img_url_o = ''
-                        try:
-                            lat = post['latitude'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Latitude parsing error: {e} ', end='')
-                            lat = 99999
-                        try:
-                            lng = post['longitude'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Longitude parsing error: {e} ', end='')
-                            lng = 99999
-                        try:
-                            woeid = post['woeid'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Longitude parsing error: {e} ', end='')
-                            woeid = 99999
-                        try:
-                            place_id = post['place_id'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Longitude parsing error: {e} ', end='')
-                            place_id = 99999
-                        try:
-                            accuracy = post['accuracy'].replace(csv_separator, '')
-                        except Exception as e:
-                            # print(f'\r[-] Accuracy parsing error: {e} ', end='')
-                            accuracy = ''
-                        data = {
-                            'user_nsid': user_nsid,
-                            'title': title,
-                            'description': description,
-                            'date_uploaded': date_uploaded,
-                            'date_taken': date_taken,
-                            'views': views,
-                            'user_tags':  tag_string,
-                            'machine_tags': machine_tag_string,
-                            'license': license,
-                            #location information
-                            'lat': lat,
-                            'lng': lng,
-                            'woeid': woeid,
-                            'place_id': place_id,
-                            'accuracy': accuracy,
-                            # image urls in different sizes
-                            'image_url_small': img_url_s,
-                            'image_url_medium': img_url_m,
-                            'image_url_large': img_url_l,
-                            'image_url_original': img_url_o
-                            }
+                for results in results_list:
+                    for page in results:
+                        for post in results[page]['photos']['photo']:
+                            index += 1
+                            post_id = post['id']
+                            # check if this post_id was already added to the output CSV
+                            if post_id in processed_ids_set:
+                                continue
+                            else:
+                                processed_ids_set.add(post_id)
+                                '''
+                                define which info fields should be fetched.
+                                ERASE ALL STRINGS OF CSV SEPERATOR! 
+                                '''
+                                # extract tags into an string separated by '+'!
+                                try:
+                                    tag_string = tag_connector.join(post['tags'].replace(csv_separator, '').replace(tag_connector, '').split(' '))
+                                except Exception as e:
+                                    # print(f'\r[-] Tag parsing error: {e} ', end='')
+                                    tag_string = ''
+                                try:
+                                    machine_tag_string = tag_connector.join(post['machine_tags'].replace(csv_separator, '').replace(tag_connector, '').split(' '))
+                                except Exception as e:
+                                    # print(f'\r[-] Tag parsing error: {e} ', end='')
+                                    machine_tag_string = ''
+                                '''
+                                text clean up
+                                of title and description
+                                - remove linebreaks etc.
+                                '''
+                                try:
+                                    description = remove_non_ascii(post['description']['_content'].replace(csv_separator, ''))
+                                except Exception as e:
+                                    # print(f'\r[-] Description parsing error: {e} ', end='')
+                                    description = ''
+                                try:
+                                    title = remove_non_ascii(post['title'].replace(csv_separator, ''))
+                                except Exception as e:
+                                    # print(f'\r[-] Title parsing error: {e} ', end='')
+                                    title = ''
+                                try:
+                                    user_nsid = post['owner']
+                                except Exception as e:
+                                    # print(f'\r[-] User_nsid parsing error: {e} ', end='')
+                                    user_nsid = ''
+                                try:
+                                    date_uploaded = post['dateupload'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Date_uploaded parsing error: {e} ', end='')
+                                    date_uploaded = ''
+                                try:
+                                    date_taken = post['datetaken'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Date_taken parsing error: {e} ', end='')
+                                    date_taken = ''
+                                try:
+                                    views = post['views'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Views parsing error: {e} ', end='')
+                                    views = ''
+                                try:
+                                    license = post['license'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Views parsing error: {e} ', end='')
+                                    license = ''
+                                try:
+                                    img_url_s = post['url_s'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Page_URL parsing error: {e} ', end='')
+                                    img_url_s = ''
+                                try:
+                                    img_url_m = post['url_m'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Page_URL parsing error: {e} ', end='')
+                                    img_url_m = ''
+                                try:
+                                    img_url_l = post['url_l'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Page_URL parsing error: {e} ', end='')
+                                    img_url_l = ''
+                                try:
+                                    img_url_o = post['url_o'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Page_URL parsing error: {e} ', end='')
+                                    img_url_o = ''
+                                try:
+                                    lat = post['latitude'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Latitude parsing error: {e} ', end='')
+                                    lat = 99999
+                                try:
+                                    lng = post['longitude'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Longitude parsing error: {e} ', end='')
+                                    lng = 99999
+                                try:
+                                    woeid = post['woeid'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Longitude parsing error: {e} ', end='')
+                                    woeid = 99999
+                                try:
+                                    place_id = post['place_id'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Longitude parsing error: {e} ', end='')
+                                    place_id = 99999
+                                try:
+                                    accuracy = post['accuracy'].replace(csv_separator, '')
+                                except Exception as e:
+                                    # print(f'\r[-] Accuracy parsing error: {e} ', end='')
+                                    accuracy = ''
+                                data = {
+                                    'user_nsid': user_nsid,
+                                    'title': title,
+                                    'description': description,
+                                    'date_uploaded': date_uploaded,
+                                    'date_taken': date_taken,
+                                    'views': views,
+                                    'user_tags':  tag_string,
+                                    'machine_tags': machine_tag_string,
+                                    'license': license,
+                                    #location information
+                                    'lat': lat,
+                                    'lng': lng,
+                                    'woeid': woeid,
+                                    'place_id': place_id,
+                                    'accuracy': accuracy,
+                                    # image urls in different sizes
+                                    'image_url_small': img_url_s,
+                                    'image_url_medium': img_url_m,
+                                    'image_url_large': img_url_l,
+                                    'image_url_original': img_url_o
+                                    }
 
-                        if index == 0:
-                            header = create_header(data)
-                            f.write(f"{header}\n")
-                        if index % 50 == 0 and index != 0:
-                            print(f"\rLine {index} processed", end='')
+                                if index == 0:
+                                    header = create_header(data)
+                                    f.write(f"{header}\n")
+                                if index % 50 == 0 and index != 0:
+                                    print(f"\rLine {index} processed", end='')
 
-                        line = create_line(post_id, data)
-                        f.write(f"{line}\n")
+                                line = create_line(post_id, data)
+                                f.write(f"{line}\n")
 
         print(f"\nCreated output file: {self.csv_output_path}")
