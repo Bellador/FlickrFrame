@@ -137,7 +137,7 @@ class FlickrFrame:
             print("--" * 30)
             if self.toget_images:
                 print(f"[*] Downloading images..")
-                self.flickrquerier_obj.get_images(final_result_dict)
+                self.flickrquerier_obj.get_images(final_result_dict_list)
                 print("\n")
                 print("--" * 30)
                 print(f"[+] Download images - done.")

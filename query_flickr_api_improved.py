@@ -287,7 +287,17 @@ class FlickrQuerier:
                         continue
                     else:
                         processed_ids_set.add(img_id)
-                        img_url = post[image_size_key]
+                        try:
+                            img_url = post[image_size_key]
+                        except:
+                            try:
+                                img_url = post['url_l']
+                            except:
+                                try:
+                                    img_url = post['url_s']
+                                except Exception as e:
+                                    print(f'[!] Error while fetching size specific img url: {e}')
+
                         data_tuple = (img_id, img_url)
                         if worker_index >= WORKERS:
                             worker_index = 0
