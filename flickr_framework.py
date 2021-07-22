@@ -245,17 +245,18 @@ class FlickrFrame:
 ##########################################################################################
 if __name__ == '__main__':
     '''change project name!!!'''
-    project_name = 'test' # KT_ZG_SZ
+    project_name = 'chiltern_hills' # KT_ZG_SZ
 
     path_CREDENTIALS = "FLICKR_API_KEY.txt"
 
     KT_ZG_SZ = ['8.387433, 46.883662, 9.010485, 47.248475']
     red_kite_around_argaty = ['-4.063436, 56.190326, -3.956491, 56.231234']
+    chiltern_hills = ['-1.152104, 51.47025, -0.432355, 51.890047']
     # birds_around_lochwinnoch = ['-4.619658, 55.789749, -4.588323, 55.806828']
 
     flickrframe_obj = FlickrFrame(project_name,
                             path_CREDENTIALS,
-                            bbox=red_kite_around_argaty, #KT_ZG_SZ
+                            bbox=chiltern_hills, #KT_ZG_SZ
                             allowed_licenses='all', #'3,4,5'
                             min_upload_date=None, #None
                             max_upload_date=None, #None,

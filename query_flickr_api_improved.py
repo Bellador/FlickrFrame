@@ -315,7 +315,7 @@ class FlickrQuerier:
             # map waits in itself for all workers to finish
             executor.map(download_urls, data_packages)
         end = time.time()
-        print(f'[*] downloaded images in: {round((end - start) / 60, 2)} min')
+        print(f'\n[*] downloaded images in: {round((end - start) / 60, 2)} min')
 
     def write_info(self, results_list):
         csv_separator = ';'  #';' #~&~#
