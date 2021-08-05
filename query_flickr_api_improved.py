@@ -34,15 +34,19 @@ class FlickrQuerier:
                 return func(*args, **kwargs)
             return wrapper_func
 
-    def __init__(self, project_name, area_name, bbox, min_upload_date=None, max_upload_date=None, accuracy=16,
+    def __init__(self, project_name, area_name, bbox=None, text_search=None, tags=None, tag_mode=None, textual_results_to_return=1000, perform_textual_search=False, min_upload_date=None, max_upload_date=None, accuracy=16,
                  toget_images=True, image_size='medium', api_creds_file="C:/Users/mhartman/PycharmProjects/FlickrFrame/FLICKR_API_KEY.txt",
                  subquery_status=False, allowed_licenses='all', rate_limit_sleep=2):
-        # print("--"*30)
-        # print("Initialising Flickr Search with FlickrQuerier Class")
+
         self.project_name = project_name
         self.project_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), project_name)
         self.dir_path = os.path.dirname(os.path.realpath(__file__))
         self.bbox = bbox
+        self.text_search = text_search
+        self.tags = tags
+        self.tag_mode = tag_mode
+        self.textual_results_to_return = textual_results_to_return
+        self.perform_textual_search = perform_textual_search
         self.area_name = area_name
         self.min_upload_date = min_upload_date
         self.max_upload_date = max_upload_date
@@ -60,15 +64,31 @@ class FlickrQuerier:
         self.rate_limit_sleep = rate_limit_sleep
         #in case of Connection error time to pause process in seconds
         self.to_sleep = 60
-        # #check if other api authentication information were provided
-        # if self.api_creds_file is None:
-        #     self.api_creds_file = self.path_CREDENTIALS
         self.api_key, self.api_secret = self.load_creds(self.api_creds_file)
-        # print("--" * 30)
-        # print(f"Loading flickr API credentials - done.")
-        # print("--" * 30)
-        # print(f"Quering flickr API with given bbox: \n{self.bbox}")
         self.result_dict, self.unique_ids, self.flickr, self.toomany_pages = self.flickr_search()
+        # check if textual search return limit set by user is reached
+        if self.perform_textual_search:
+            if self.unique_ids is not None:
+                if len(self.unique_ids) > self.textual_results_to_return:
+                    print(f'[*] textual search: {self.textual_results_to_return} posts fetched. Finishing search.')
+                    print("--" * 30)
+                    print(f"[*] Search - done.")
+                    print("--" * 30)
+                    print(f"[*] Fetching metadata for search results and writing to file...")
+                    # needs to be packed into a list for compatibility with high_data_volume_handler that returns a list of result_dicts
+                    self.write_info([self.result_dict])
+                    print("--" * 30)
+                    print(f"[*] Acquiring metadata - done.")
+                    if self.toget_images:
+                        print("--" * 30)
+                        print(f"[*] Downloading images into folder {project_name} to current directory.")
+                        self.get_images([self.result_dict], image_size=self.image_size)
+                        print("\n")
+                        print("--" * 30)
+                        print(f"[*] Download images - done.")
+                    print("--" * 30)
+                    print("--" * 30)
+                    print("[*] FlickrQuerier Class - done")
         '''
         Check if too many pages (15 or more)
         were returned by the flickr search for the given bounding box
@@ -83,7 +103,7 @@ class FlickrQuerier:
         print(f"[*] Search - done.")
         print("--" * 30)
         print(f"[*] Fetching metadata for search results and writing to file...")
-        # needs to be packed into a list for compatibility with big_bbox_handler that returns a list of result_dicts
+        # needs to be packed into a list for compatibility with high_data_volume_handler that returns a list of result_dicts
         self.write_info([self.result_dict])
         print("--" * 30)
         print(f"[*] Acquiring metadata - done.")
@@ -126,10 +146,15 @@ class FlickrQuerier:
                  "geo, tags, machine_tags, o_dims, views, media, path_alias, url_sq, url_t, url_s, url_q, url_m, url_n, " \
                  "url_z, url_c, url_l, url_o"
         flickr = flickrapi.FlickrAPI(self.api_key, self.api_secret, format='json')
+        # check if bbox or text based search shall be performed
+        # if self.bbox is not None and self.text_search is None:
         while True:
             try:
                 if self.allowed_licenses != 'all':
                     photos = flickr.photos.search(bbox=self.bbox,
+                                                  text=self.text_search,
+                                                  tags=self.tags,
+                                                  tag_mode=self.tag_mode,
                                                   min_upload_date=self.min_upload_date,
                                                   max_upload_date=self.max_upload_date,
                                                   accuracy=self.accuracy,
@@ -139,6 +164,9 @@ class FlickrQuerier:
                     break
                 else:
                     photos = flickr.photos.search(bbox=self.bbox,
+                                                  text=self.text_search,
+                                                  tags=self.tags,
+                                                  tag_mode=self.tag_mode,
                                                   min_upload_date=self.min_upload_date,
                                                   max_upload_date=self.max_upload_date,
                                                   accuracy=self.accuracy,
@@ -185,6 +213,9 @@ class FlickrQuerier:
                 try:
                     if self.allowed_licenses != 'all':
                         result_bytes = flickr.photos.search(bbox=self.bbox,
+                                                            text=self.text_search,
+                                                            tags=self.tags,
+                                                            tag_mode=self.tag_mode,
                                                             min_upload_date=self.min_upload_date,
                                                             max_upload_date=self.max_upload_date,
                                                             accuracy=self.accuracy,
@@ -195,6 +226,9 @@ class FlickrQuerier:
                         result_dict[f'page_{page}'] = json.loads(result_bytes.decode('utf-8'))
                     else:
                         result_bytes = flickr.photos.search(bbox=self.bbox,
+                                                            text=self.text_search,
+                                                            tags=self.tags,
+                                                            tag_mode=self.tag_mode,
                                                             min_upload_date=self.min_upload_date,
                                                             max_upload_date=self.max_upload_date,
                                                             accuracy=self.accuracy,
@@ -290,13 +324,14 @@ class FlickrQuerier:
                         try:
                             img_url = post[image_size_key]
                         except:
-                            try:
-                                img_url = post['url_l']
-                            except:
+                            list_of_alternative_image_urls = ['url_l', 'url_o', 'url_s', 'url_q', 'url_sq', 'url_t']
+                            for url_key in list_of_alternative_image_urls:
                                 try:
-                                    img_url = post['url_s']
-                                except Exception as e:
-                                    print(f'[!] Error while fetching size specific img url: {e}')
+                                    img_url = post[url_key]
+                                    break
+                                except:
+                                    continue
+                                print(f'[!] Error while fetching size specific img url: {e}')
 
                         data_tuple = (img_id, img_url)
                         if worker_index >= WORKERS:
