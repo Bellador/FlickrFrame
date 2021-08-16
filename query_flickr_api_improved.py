@@ -517,7 +517,7 @@ class FlickrQuerier:
                                     'image_url_original': img_url_o
                                     }
 
-                                if index == 0:
+                                if index == 1:
                                     header = create_header(data)
                                     f.write(f"{header}\n")
                                 if index % 50 == 0 and index != 0:
