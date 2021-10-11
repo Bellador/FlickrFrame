@@ -34,7 +34,7 @@ class FlickrQuerier:
                 return func(*args, **kwargs)
             return wrapper_func
 
-    def __init__(self, project_name, area_name, bbox=None, text_search=None, tags=None, tag_mode=None, textual_results_to_return=1000, perform_textual_search=False, min_upload_date=None, max_upload_date=None, accuracy=16,
+    def __init__(self, project_name, area_name, bbox=None, text_search=None, tags=None, tag_mode=None, has_geo=True, textual_results_to_return=1000, perform_textual_search=False, min_upload_date=None, max_upload_date=None, accuracy=16,
                  toget_images=True, image_size='medium', api_creds_file="C:/Users/mhartman/PycharmProjects/FlickrFrame/FLICKR_API_KEY.txt",
                  subquery_status=False, allowed_licenses='all', rate_limit_sleep=2):
 
@@ -45,6 +45,7 @@ class FlickrQuerier:
         self.text_search = text_search
         self.tags = tags
         self.tag_mode = tag_mode
+        self.has_geo = has_geo
         self.textual_results_to_return = textual_results_to_return
         self.perform_textual_search = perform_textual_search
         self.area_name = area_name
@@ -155,6 +156,7 @@ class FlickrQuerier:
                                                   text=self.text_search,
                                                   tags=self.tags,
                                                   tag_mode=self.tag_mode,
+                                                  has_geo=self.has_geo,
                                                   min_upload_date=self.min_upload_date,
                                                   max_upload_date=self.max_upload_date,
                                                   accuracy=self.accuracy,
@@ -167,6 +169,7 @@ class FlickrQuerier:
                                                   text=self.text_search,
                                                   tags=self.tags,
                                                   tag_mode=self.tag_mode,
+                                                  has_geo=self.has_geo,
                                                   min_upload_date=self.min_upload_date,
                                                   max_upload_date=self.max_upload_date,
                                                   accuracy=self.accuracy,
@@ -216,6 +219,7 @@ class FlickrQuerier:
                                                             text=self.text_search,
                                                             tags=self.tags,
                                                             tag_mode=self.tag_mode,
+                                                            has_geo=self.has_geo,
                                                             min_upload_date=self.min_upload_date,
                                                             max_upload_date=self.max_upload_date,
                                                             accuracy=self.accuracy,
@@ -229,6 +233,7 @@ class FlickrQuerier:
                                                             text=self.text_search,
                                                             tags=self.tags,
                                                             tag_mode=self.tag_mode,
+                                                            has_geo=self.has_geo,
                                                             min_upload_date=self.min_upload_date,
                                                             max_upload_date=self.max_upload_date,
                                                             accuracy=self.accuracy,

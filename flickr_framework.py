@@ -30,7 +30,7 @@ class FlickrFrame:
     where the users personal authenticatoin details are contained.
     '''
     def __init__(self, project_name, api_credentials_path, min_upload_date=None, max_upload_date=None, bbox=None, text_search=None, tags=None,
-                            tag_mode=None, textual_results_to_return=1000, geojson_file=None, accuracy=16, toget_images=True, image_size='medium', allowed_licenses=None):
+                            tag_mode=None, has_geo=True, textual_results_to_return=1000, geojson_file=None, accuracy=16, toget_images=True, image_size='medium', allowed_licenses=None):
         self.project_name = project_name
         self.api_credentials_path = api_credentials_path
         self.min_upload_date = min_upload_date
@@ -39,6 +39,7 @@ class FlickrFrame:
         self.text_search = text_search
         self.tags = tags
         self.tag_mode = tag_mode
+        self.has_geo = has_geo
         self.textual_results_to_return = textual_results_to_return
         self.perform_textual_search = False
         if self.tag_mode is not None or self.text_search is not None:
@@ -118,6 +119,7 @@ class FlickrFrame:
                                            text_search=self.text_search,
                                            tags=self.tags,
                                            tag_mode=self.tag_mode,
+                                           has_geo=self.has_geo,
                                            textual_results_to_return=self.textual_results_to_return,
                                            perform_textual_search=self.perform_textual_search,
                                            min_upload_date=new_lower_limit,
@@ -224,6 +226,7 @@ class FlickrFrame:
                                                text_search=self.text_search,
                                                tags=self.tags,
                                                tag_mode=self.tag_mode,
+                                               has_geo=self.has_geo,
                                                textual_results_to_return=self.textual_results_to_return,
                                                perform_textual_search=self.perform_textual_search,
                                                min_upload_date=self.min_upload_date,
@@ -263,6 +266,7 @@ class FlickrFrame:
                                        text_search=self.text_search,
                                        tags=self.tags,
                                        tag_mode=self.tag_mode,
+                                       has_geo=self.has_geo,
                                        textual_results_to_return=self.textual_results_to_return,
                                        perform_textual_search=self.perform_textual_search,
                                        min_upload_date=self.min_upload_date,
@@ -284,18 +288,19 @@ class FlickrFrame:
 ##########################################################################################
 if __name__ == '__main__':
     '''change project name!!!'''
-    project_name = 'text_search_test2' # KT_ZG_SZ
+    project_name = 'text_search_has_geo_redkite' # KT_ZG_SZ
 
     path_CREDENTIALS = "FLICKR_API_KEY.txt"
 
     # FOR GEOSPATIAL QUERIES SET BOUNDING BOX
     KT_ZG_SZ = ['8.387433, 46.883662, 9.010485, 47.248475']
+    KT_ZG = ['8.390165, 47.079007, 8.701964, 47.247543']
     red_kite_around_argaty = ['-4.063436, 56.190326, -3.956491, 56.231234']
     # birds_around_lochwinnoch = ['-4.619658, 55.789749, -4.588323, 55.806828']
     chiltern_hills_bbox = ['-1.152104, 51.47025, -0.432355, 51.890047']
 
     # THERE ARE 2 WAYS FOR TEXTUAL SEARCHES: (1) BY TAGS AND TAG_MODE, (2) BY FREE TEXT IN TITLE, DESCRIPTION AND TAGS
-    textual_results_to_return = 250 # the amount of posts to query with textual search (either tags or free text)
+    textual_results_to_return = 999999999 # the amount of posts to query with textual search (either tags or free text)
     # TAGS SEARCH AND TAG MODE
     tag_mode = 'any' # either 'all' (AND) or 'any' (OR)
     tags = ['red kite, rotmilan']
@@ -308,6 +313,7 @@ if __name__ == '__main__':
                             text_search=red_kite_text_search,
                             tags=None,
                             tag_mode=None,
+                            has_geo=True, # for textual search, if images should have geocoordinates
                             textual_results_to_return=textual_results_to_return,
                             allowed_licenses='all', #'3,4,5'
                             min_upload_date=None, #None
